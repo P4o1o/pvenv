@@ -29,19 +29,19 @@ mkdir "$PVENV_HOME/env" || {
 fi
 
 pvenv() {
-local cmd=
-if (($# > 0)); then
-    cmd=$1
-    shift
-else
-    cmd='-h'
-fi
+    local cmd=
+    if (($# > 0)); then
+        cmd=$1
+        shift
+    else
+        cmd='-h'
+    fi
 
-local name_re='^[A-Za-z0-9][A-Za-z0-9._-]*$'
+    local name_re='^[A-Za-z0-9][A-Za-z0-9._-]*$'
 
-case $cmd in
-    help|-h|--help)
-        cat <<EOF
+    case $cmd in
+        help|-h|--help)
+            cat <<EOF
 usage:
 pvenv create [-p PYTHON] NAME...
 pvenv activate NAME
@@ -61,305 +61,305 @@ pvenv list
 pvenv info
 pvenv info test
 EOF
-        ;;
-    create)
-        local selected_py=$PVENV_PYTHON
+            ;;
+        create)
+            local selected_py=$PVENV_PYTHON
 
-        while (($# > 0)); do
-            case $1 in
-                -h|--help)
-                    cat <<EOF
+            while (($# > 0)); do
+                case $1 in
+                    -h|--help)
+                        cat <<EOF
 usage:
 pvenv create [-p PYTHON] NAME...
 
 create one or more virtual environments.
 use -p to select a python version or executable.
 EOF
-                    return 0
-                    ;;
-                -p|--python)
-                    if (($# == 1)); then
-                        echo "pvenv: missing value after $1" >&2
+                        return 0
+                        ;;
+                    -p|--python)
+                        if (($# == 1)); then
+                            echo "pvenv: missing value after $1" >&2
+                            return 64
+                        fi
+
+                        shift
+
+                        if [[ $1 == [0-9]* ]]; then
+                            selected_py="python$1"
+                        elif type -P "$1" >/dev/null 2>&1; then
+                            selected_py=$1
+                        elif [[ -x $1 ]]; then
+                            selected_py=$1
+                        else
+                            echo "pvenv: invalid python version: $1" >&2
+                            return 64
+                        fi
+                        ;;
+                    --)
+                        shift
+                        break
+                        ;;
+                    -*|--*)
+                        echo "pvenv: unknown option: $1" >&2
                         return 64
-                    fi
+                        ;;
+                    *)
+                        break
+                        ;;
+                esac
 
-                    shift
+                shift
+            done
 
-                    if [[ $1 == [0-9]* ]]; then
-                        selected_py="python$1"
-                    elif type -P "$1" >/dev/null 2>&1; then
-                        selected_py=$1
-                    elif [[ -x $1 ]]; then
-                        selected_py=$1
-                    else
-                        echo "pvenv: invalid python version: $1" >&2
-                        return 64
-                    fi
-                    ;;
-                --)
-                    shift
-                    break
-                    ;;
-                -*|--*)
-                    echo "pvenv: unknown option: $1" >&2
-                    return 64
-                    ;;
-                *)
-                    break
-                    ;;
-            esac
-
-            shift
-        done
-
-        if (($# == 0)); then
-            echo 'pvenv: missing venv name' >&2
-            return 64
-        fi
-
-        "$selected_py" --version &>/dev/null || {
-            echo "pvenv: $selected_py not found in the system" >&2
-            return 69
-        }
-
-        "$selected_py" -m venv -h &>/dev/null || {
-            echo "pvenv: $selected_py-venv not found in the system" >&2
-            return 69
-        }
-
-        local name
-        for name in "$@"; do
-            if [[ ! $name =~ $name_re ]]; then
-                echo "pvenv: invalid environment name: $name" >&2
+            if (($# == 0)); then
+                echo 'pvenv: missing venv name' >&2
                 return 64
             fi
 
-            local env="$PVENV_HOME/env/$name"
-            if [[ -f $env/bin/activate ]]; then
-                echo "pvenv: environment already exists: $name" >&2
-                return 64
-            fi
-        done
-
-        for name in "$@"; do
-            local env="$PVENV_HOME/env/$name"
-
-            "$selected_py" -m venv "$env" &>/dev/null || {
-                echo "pvenv: cannot create environment: $name" >&2
-                return 74
+            "$selected_py" --version &>/dev/null || {
+                echo "pvenv: $selected_py not found in the system" >&2
+                return 69
             }
 
-            echo "created: $env"
-        done
-        ;;
-    activate)
-        if [[ ${1:-} == -h || ${1:-} == --help ]]; then
-            cat <<EOF
+            "$selected_py" -m venv -h &>/dev/null || {
+                echo "pvenv: $selected_py-venv not found in the system" >&2
+                return 69
+            }
+
+            local name
+            for name in "$@"; do
+                if [[ ! $name =~ $name_re ]]; then
+                    echo "pvenv: invalid environment name: $name" >&2
+                    return 64
+                fi
+
+                local env="$PVENV_HOME/env/$name"
+                if [[ -f $env/bin/activate ]]; then
+                    echo "pvenv: environment already exists: $name" >&2
+                    return 64
+                fi
+            done
+
+            for name in "$@"; do
+                local env="$PVENV_HOME/env/$name"
+
+                "$selected_py" -m venv "$env" &>/dev/null || {
+                    echo "pvenv: cannot create environment: $name" >&2
+                    return 74
+                }
+
+                echo "created: $env"
+            done
+            ;;
+        activate)
+            if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+                cat <<EOF
 usage:
 pvenv activate NAME
 
 activate an existing virtual environment.
 changes the current shell environment.
 EOF
-            return 0
-        fi
+                return 0
+            fi
 
-        if (($# == 0)); then
-            echo 'pvenv: missing venv name' >&2
-            return 64
-        fi
+            if (($# == 0)); then
+                echo 'pvenv: missing venv name' >&2
+                return 64
+            fi
 
-        local name=$1
-        shift
+            local name=$1
+            shift
 
-        if (($# > 0)); then
-            echo "pvenv: unexpected argument: $1" >&2
-            return 64
-        fi
+            if (($# > 0)); then
+                echo "pvenv: unexpected argument: $1" >&2
+                return 64
+            fi
 
-        if [[ ! $name =~ $name_re ]]; then
-            echo "pvenv: invalid environment name: $name" >&2
-            return 64
-        fi
+            if [[ ! $name =~ $name_re ]]; then
+                echo "pvenv: invalid environment name: $name" >&2
+                return 64
+            fi
 
-        local env="$PVENV_HOME/env/$name"
-        if [[ ! -f $env/bin/activate ]]; then
-            echo "pvenv: environment does not exist: $name" >&2
-            return 66
-        fi
+            local env="$PVENV_HOME/env/$name"
+            if [[ ! -f $env/bin/activate ]]; then
+                echo "pvenv: environment does not exist: $name" >&2
+                return 66
+            fi
 
-        source "$env/bin/activate"
-        ;;
-    deactivate)
-        if [[ ${1:-} == -h || ${1:-} == --help ]]; then
-            cat <<EOF
+            source "$env/bin/activate"
+            ;;
+        deactivate)
+            if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+                cat <<EOF
 usage:
 pvenv deactivate
 
 deactivate the current virtual environment.
 EOF
-            return 0
-        fi
+                return 0
+            fi
 
-        if (($# > 0)); then
-            echo "pvenv: unexpected argument: $1" >&2
-            return 64
-        fi
+            if (($# > 0)); then
+                echo "pvenv: unexpected argument: $1" >&2
+                return 64
+            fi
 
-        if [[ -z $VIRTUAL_ENV ]]; then
-            echo 'pvenv: no active environment' >&2
-            return 66
-        fi
+            if [[ -z $VIRTUAL_ENV ]]; then
+                echo 'pvenv: no active environment' >&2
+                return 66
+            fi
 
-        deactivate
-        ;;
-    remove|rm)
-        if [[ ${1:-} == -h || ${1:-} == --help ]]; then
-            cat <<EOF
+            deactivate
+            ;;
+        remove|rm)
+            if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+                cat <<EOF
 usage:
 pvenv remove NAME...
 
 remove one or more existing virtual environments.
 refuses to remove the currently active environment.
 EOF
-            return 0
-        fi
+                return 0
+            fi
 
-        if (($# == 0)); then
-            echo 'pvenv: missing venv name' >&2
-            return 64
-        fi
-
-        local name=
-        local names=()
-        local envs=()
-
-        for name in "$@"; do
-            if [[ ! $name =~ $name_re ]]; then
-                echo "pvenv: invalid environment name: $name" >&2
+            if (($# == 0)); then
+                echo 'pvenv: missing venv name' >&2
                 return 64
             fi
 
-            local env="$PVENV_HOME/env/$name"
-            if [[ ! -d $env ]]; then
-                echo "pvenv: environment does not exist: $name" >&2
-                return 66
-            fi
+            local name=
+            local names=()
+            local envs=()
 
-            if [[ $VIRTUAL_ENV == "$env" ]]; then
-                echo "pvenv: cannot remove active environment: $name" >&2
-                return 69
-            fi
+            for name in "$@"; do
+                if [[ ! $name =~ $name_re ]]; then
+                    echo "pvenv: invalid environment name: $name" >&2
+                    return 64
+                fi
 
-            names+=("$name")
-            envs+=("$env")
-        done
+                local env="$PVENV_HOME/env/$name"
+                if [[ ! -d $env ]]; then
+                    echo "pvenv: environment does not exist: $name" >&2
+                    return 66
+                fi
 
-        local i
-        for ((i = 0; i < ${#envs[@]}; i++)); do
-            rm -rf "${envs[i]}" || {
-                echo "pvenv: cannot remove environment: ${names[i]}" >&2
-                return 74
-            }
+                if [[ $VIRTUAL_ENV == "$env" ]]; then
+                    echo "pvenv: cannot remove active environment: $name" >&2
+                    return 69
+                fi
 
-            echo "removed: ${names[i]}"
-        done
-        ;;
-    list|ls)
-        if [[ ${1:-} == -h || ${1:-} == --help ]]; then
-            cat <<EOF
+                names+=("$name")
+                envs+=("$env")
+            done
+
+            local i
+            for ((i = 0; i < ${#envs[@]}; i++)); do
+                rm -rf "${envs[i]}" || {
+                    echo "pvenv: cannot remove environment: ${names[i]}" >&2
+                    return 74
+                }
+
+                echo "removed: ${names[i]}"
+            done
+            ;;
+        list|ls)
+            if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+                cat <<EOF
 usage:
 pvenv list
 
 list all virtual environments.
 shows environments stored under \$PVENV_HOME/env.
 EOF
-            return 0
-        fi
-
-        if (($# > 0)); then
-            echo "pvenv: unexpected argument: $1" >&2
-            return 64
-        fi
-
-        local nullglob
-        nullglob=$(shopt -p nullglob)
-
-        shopt -s nullglob
-
-        local env
-        for env in "$PVENV_HOME/env"/*; do
-            if [[ -d $env && -f $env/bin/activate ]]; then
-                echo "${env##*/}"
+                return 0
             fi
-        done
 
-        $nullglob
-        ;;
-    info)
-        if [[ ${1:-} == -h || ${1:-} == --help ]]; then
-            cat <<EOF
+            if (($# > 0)); then
+                echo "pvenv: unexpected argument: $1" >&2
+                return 64
+            fi
+
+            local nullglob
+            nullglob=$(shopt -p nullglob)
+
+            shopt -s nullglob
+
+            local env
+            for env in "$PVENV_HOME/env"/*; do
+                if [[ -d $env && -f $env/bin/activate ]]; then
+                    echo "${env##*/}"
+                fi
+            done
+
+            $nullglob
+            ;;
+        info)
+            if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+                cat <<EOF
 usage:
 pvenv info [NAME...]
 
 show global pvenv info.
 with NAME, show info about one or more environments.
 EOF
-            return 0
-        fi
-
-        if (($# == 0)); then
-            echo "home: $PVENV_HOME"
-            echo "envs: $PVENV_HOME/env"
-            echo "python: $PVENV_PYTHON"
-            echo "python-version: $("$PVENV_PYTHON" --version 2>/dev/null)"
-
-            if [[ -n $VIRTUAL_ENV ]]; then
-                echo "active: $VIRTUAL_ENV"
-            else
-                echo 'active: none'
+                return 0
             fi
 
-            return 0
-        fi
+            if (($# == 0)); then
+                echo "home: $PVENV_HOME"
+                echo "envs: $PVENV_HOME/env"
+                echo "python: $PVENV_PYTHON"
+                echo "python-version: $("$PVENV_PYTHON" --version 2>/dev/null)"
 
-        local name
-        local names=()
-        local envs=()
+                if [[ -n $VIRTUAL_ENV ]]; then
+                    echo "active: $VIRTUAL_ENV"
+                else
+                    echo 'active: none'
+                fi
 
-        for name in "$@"; do
-            if [[ ! $name =~ $name_re ]]; then
-                echo "pvenv: invalid environment name: $name" >&2
-                return 64
+                return 0
             fi
 
-            local env="$PVENV_HOME/env/$name"
-            if [[ ! -f $env/bin/python ]]; then
-                echo "pvenv: environment does not exist: $name" >&2
-                return 66
-            fi
+            local name
+            local names=()
+            local envs=()
 
-            names+=("$name")
-            envs+=("$env")
-        done
+            for name in "$@"; do
+                if [[ ! $name =~ $name_re ]]; then
+                    echo "pvenv: invalid environment name: $name" >&2
+                    return 64
+                fi
 
-        local i
-        for ((i = 0; i < ${#envs[@]}; i++)); do
-            echo "name: ${names[i]}"
-            echo "path: ${envs[i]}"
-            echo "python: $("${envs[i]}/bin/python" --version 2>/dev/null)"
-            echo "executable: ${envs[i]}/bin/python"
+                local env="$PVENV_HOME/env/$name"
+                if [[ ! -f $env/bin/python ]]; then
+                    echo "pvenv: environment does not exist: $name" >&2
+                    return 66
+                fi
 
-            if [[ $VIRTUAL_ENV == "${envs[i]}" ]]; then
-                echo 'active: yes'
-            else
-                echo 'active: no'
-            fi
-        done
-        ;;
-    *)
-        echo "pvenv: unknown command: $cmd" >&2
-        return 64
-        ;;
-esac
+                names+=("$name")
+                envs+=("$env")
+            done
+
+            local i
+            for ((i = 0; i < ${#envs[@]}; i++)); do
+                echo "name: ${names[i]}"
+                echo "path: ${envs[i]}"
+                echo "python: $("${envs[i]}/bin/python" --version 2>/dev/null)"
+                echo "executable: ${envs[i]}/bin/python"
+
+                if [[ $VIRTUAL_ENV == "${envs[i]}" ]]; then
+                    echo 'active: yes'
+                else
+                    echo 'active: no'
+                fi
+            done
+            ;;
+        *)
+            echo "pvenv: unknown command: $cmd" >&2
+            return 64
+            ;;
+    esac
 }
